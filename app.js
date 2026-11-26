@@ -250,3 +250,165 @@ document.querySelector("#btn-finalizar").addEventListener("click", finalizarPedi
 // ---------- Início ----------
 mostrarCardapio("Todos");
 mostrarPedido();
+
+
+
+
+
+
+
+// ===== Controle da Câmera e Galeria =====
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const areaCamera = document.getElementById("area-camera");
+const btnLigarCamera = document.getElementById("btn-ligar-camera");
+const btnFoto = document.getElementById("btn-foto");
+const btnTrocarCamera = document.getElementById("btn-trocar-camera");
+const inputFoto = document.getElementById("input-foto");
+const galeria = document.getElementById("galeria");
+
+let streamAtual = null;
+let usandoCameraTraseira = true;
+
+// Liga ou desliga a câmera do navegador
+async function ligarCamera() {
+  try {
+    if (streamAtual) {
+      desligarCamera();
+    }
+
+    const restricoes = {
+      video: {
+        facingMode: usandoCameraTraseira ? "environment" : "user"
+      },
+      audio: false
+    };
+
+    streamAtual = await navigator.mediaDevices.getUserMedia(restricoes);
+    video.srcObject = streamAtual;
+
+    areaCamera.classList.add("ligada");
+    btnLigarCamera.textContent = "Desligar câmera";
+    btnFoto.disabled = false;
+    btnTrocarCamera.disabled = false;
+  } catch (erro) {
+    console.error("Erro ao acessar a câmera:", erro);
+    if (typeof mostrarAviso === "function") {
+      mostrarAviso("Não foi possível acessar a câmera. Verifique as permissões.");
+    } else {
+      alert("Não foi possível acessar a câmera. Verifique as permissões ou use HTTPS/localhost.");
+    }
+  }
+}
+
+function desligarCamera() {
+  if (streamAtual) {
+    streamAtual.getTracks().forEach((track) => track.stop());
+    streamAtual = null;
+  }
+  if (video) {
+    video.srcObject = null;
+  }
+  if (areaCamera) {
+    areaCamera.classList.remove("ligada");
+  }
+  if (btnLigarCamera) {
+    btnLigarCamera.textContent = "Ligar câmera";
+  }
+  if (btnFoto) {
+    btnFoto.disabled = true;
+  }
+  if (btnTrocarCamera) {
+    btnTrocarCamera.disabled = true;
+  }
+}
+
+// Captura o quadro atual do vídeo e salva na galeria
+function tirarFoto() {
+  if (!streamAtual || !video.videoWidth) return;
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const contexto = canvas.getContext("2d");
+  contexto.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+  adicionarFotoNaGaleria(dataUrl);
+
+  if (typeof mostrarAviso === "function") {
+    mostrarAviso("Foto adicionada à galeria!");
+  }
+}
+
+// Alterna entre câmera frontal e traseira
+function trocarCamera() {
+  usandoCameraTraseira = !usandoCameraTraseira;
+  ligarCamera();
+}
+
+// Exibe a imagem na galeria e salva no localStorage
+function adicionarFotoNaGaleria(src, salvar = true) {
+  const img = document.createElement("img");
+  img.src = src;
+  img.alt = "Foto do meu café";
+  galeria.prepend(img);
+
+  if (salvar) {
+    const fotosSalvas = JSON.parse(localStorage.getItem("cafe_galeria") || "[]");
+    fotosSalvas.unshift(src);
+    localStorage.setItem("cafe_galeria", JSON.stringify(fotosSalvas.slice(0, 12)));
+  }
+}
+
+// Carrega fotos já tiradas anteriormente
+function carregarGaleria() {
+  if (!galeria) return;
+  const fotosSalvas = JSON.parse(localStorage.getItem("cafe_galeria") || "[]");
+  fotosSalvas.forEach((src) => adicionarFotoNaGaleria(src, false));
+}
+
+// Eventos dos botões
+if (btnLigarCamera) {
+  btnLigarCamera.addEventListener("click", () => {
+    if (streamAtual) {
+      desligarCamera();
+    } else {
+      ligarCamera();
+    }
+  });
+}
+
+if (btnFoto) {
+  btnFoto.addEventListener("click", tirarFoto);
+}
+
+if (btnTrocarCamera) {
+  btnTrocarCamera.addEventListener("click", trocarCamera);
+}
+
+// Fallback: upload/câmera nativa pelo input file
+if (inputFoto) {
+  inputFoto.addEventListener("change", (evento) => {
+    const arquivo = evento.target.files[0];
+    if (!arquivo) return;
+
+    const leitor = new FileReader();
+    leitor.onload = (e) => {
+      adicionarFotoNaGaleria(e.target.result);
+      if (typeof mostrarAviso === "function") {
+        mostrarAviso("Foto carregada na galeria!");
+      }
+    };
+    leitor.readAsDataURL(arquivo);
+  });
+}
+
+carregarGaleria();
+
+
+
+
+
+
+
