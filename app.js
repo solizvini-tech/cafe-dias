@@ -1,6 +1,5 @@
 // ==========================================================
-// app.js - Dia 5: abas, pedido, localStorage e vibração
-// (a câmera fica em camera.js)
+// app.js - Dia 6: abas, pedido, busca, vibração e câmera
 // ==========================================================
 
 // ---------- Utilidades ----------
@@ -12,7 +11,6 @@ function formatarPreco(valor) {
   });
 }
 
-// Mostra uma mensagem rápida na parte de baixo da tela
 let temporizadorAviso;
 function mostrarAviso(texto) {
   const aviso = document.querySelector("#aviso");
@@ -24,10 +22,7 @@ function mostrarAviso(texto) {
   }, 2000);
 }
 
-// RECURSO DE HARDWARE: motor de vibração do celular
-// padrao pode ser um número (ms) ou uma lista: [vibra, pausa, vibra...]
 function vibrar(padrao) {
-  // Nem todo aparelho tem vibração (iPhone e computador não têm esta API)
   if ("vibrate" in navigator) {
     navigator.vibrate(padrao);
   }
@@ -40,16 +35,15 @@ const telas = document.querySelectorAll(".tela");
 
 function abrirTela(idTela) {
   for (const tela of telas) {
-    tela.hidden = tela.id !== idTela; // esconde todas, menos a escolhida
+    tela.hidden = tela.id !== idTela;
   }
   for (const aba of abas) {
     aba.classList.toggle("ativa", aba.dataset.tela === idTela);
   }
   window.scrollTo(0, 0);
 
-  // Saiu da tela da câmera? Desliga a câmera para economizar bateria
   if (idTela !== "tela-camera" && typeof desligarCamera === "function") {
-    desligarCamera(); // função que está em camera.js
+    desligarCamera();
   }
 }
 
@@ -108,7 +102,6 @@ function mostrarCardapio(categoria) {
   }
 }
 
-// Atualiza os produtos enquanto o usuário digita
 campoBusca.addEventListener("input", function () {
   mostrarCardapio(categoriaAtual);
 });
@@ -125,26 +118,21 @@ for (const botao of botoesFiltro) {
 
 // ---------- Pedido ----------
 
-// localStorage só guarda TEXTO. Por isso usamos JSON:
-// JSON.stringify(lista) -> transforma a lista em texto
-// JSON.parse(texto) -> transforma o texto de volta em lista
 function carregarPedido() {
   const salvo = localStorage.getItem("pedido");
   if (salvo) {
     return JSON.parse(salvo);
   }
-  return []; // nada salvo ainda: pedido vazio
+  return [];
 }
 
 function salvarPedido() {
   localStorage.setItem("pedido", JSON.stringify(pedido));
 }
 
-// Cada item do pedido: { id, nome, preco, quantidade }
 let pedido = carregarPedido();
 
 function adicionarAoPedido(produto) {
-  // Procura se o produto já está no pedido
   const item = pedido.find(function (i) {
     return i.id === produto.id;
   });
@@ -162,11 +150,10 @@ function adicionarAoPedido(produto) {
 
   salvarPedido();
   mostrarPedido();
-  vibrar(50); // vibração curtinha
+  vibrar(50);
   mostrarAviso(produto.emoji + " " + produto.nome + " adicionado");
 }
 
-// mudanca = +1 ou -1
 function alterarQuantidade(id, mudanca) {
   const item = pedido.find(function (i) {
     return i.id === id;
@@ -174,7 +161,6 @@ function alterarQuantidade(id, mudanca) {
   item.quantidade = item.quantidade + mudanca;
 
   if (item.quantidade <= 0) {
-    // filter cria uma nova lista SEM o item zerado
     pedido = pedido.filter(function (i) {
       return i.id !== id;
     });
@@ -225,7 +211,6 @@ function mostrarPedido() {
 
   document.querySelector("#total-pedido").textContent = formatarPreco(calcularTotal());
 
-  // Bolinha vermelha com a quantidade, na aba "Pedido"
   const contador = document.querySelector("#contador-pedido");
   contador.textContent = quantidadeTotal;
   contador.hidden = quantidadeTotal === 0;
@@ -238,7 +223,7 @@ function finalizarPedido() {
   if (pedido.length === 0) {
     return;
   }
-  vibrar([100, 50, 100, 50, 200]); // padrão "comemoração"
+  vibrar([100, 50, 100, 50, 200]);
   mostrarAviso("Pedido enviado! Total: " + formatarPreco(calcularTotal()));
   pedido = [];
   salvarPedido();
@@ -247,17 +232,8 @@ function finalizarPedido() {
 
 document.querySelector("#btn-finalizar").addEventListener("click", finalizarPedido);
 
-// ---------- Início ----------
-mostrarCardapio("Todos");
-mostrarPedido();
+// ---------- Controle da Câmera e Galeria ----------
 
-
-
-
-
-
-
-// ===== Controle da Câmera e Galeria =====
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const areaCamera = document.getElementById("area-camera");
@@ -270,7 +246,6 @@ const galeria = document.getElementById("galeria");
 let streamAtual = null;
 let usandoCameraTraseira = true;
 
-// Liga ou desliga a câmera do navegador
 async function ligarCamera() {
   try {
     if (streamAtual) {
@@ -293,17 +268,15 @@ async function ligarCamera() {
     btnTrocarCamera.disabled = false;
   } catch (erro) {
     console.error("Erro ao acessar a câmera:", erro);
-    if (typeof mostrarAviso === "function") {
-      mostrarAviso("Não foi possível acessar a câmera. Verifique as permissões.");
-    } else {
-      alert("Não foi possível acessar a câmera. Verifique as permissões ou use HTTPS/localhost.");
-    }
+    mostrarAviso("Não foi possível acessar a câmera.");
   }
 }
 
 function desligarCamera() {
   if (streamAtual) {
-    streamAtual.getTracks().forEach((track) => track.stop());
+    streamAtual.getTracks().forEach(function (track) {
+      track.stop();
+    });
     streamAtual = null;
   }
   if (video) {
@@ -323,9 +296,10 @@ function desligarCamera() {
   }
 }
 
-// Captura o quadro atual do vídeo e salva na galeria
 function tirarFoto() {
-  if (!streamAtual || !video.videoWidth) return;
+  if (!streamAtual || !video.videoWidth) {
+    return;
+  }
 
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
@@ -335,19 +309,15 @@ function tirarFoto() {
 
   const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
   adicionarFotoNaGaleria(dataUrl);
-
-  if (typeof mostrarAviso === "function") {
-    mostrarAviso("Foto adicionada à galeria!");
-  }
+  vibrar(50);
+  mostrarAviso("Foto adicionada à galeria!");
 }
 
-// Alterna entre câmera frontal e traseira
 function trocarCamera() {
   usandoCameraTraseira = !usandoCameraTraseira;
   ligarCamera();
 }
 
-// Exibe a imagem na galeria e salva no localStorage
 function adicionarFotoNaGaleria(src, salvar = true) {
   const img = document.createElement("img");
   img.src = src;
@@ -361,16 +331,18 @@ function adicionarFotoNaGaleria(src, salvar = true) {
   }
 }
 
-// Carrega fotos já tiradas anteriormente
 function carregarGaleria() {
-  if (!galeria) return;
+  if (!galeria) {
+    return;
+  }
   const fotosSalvas = JSON.parse(localStorage.getItem("cafe_galeria") || "[]");
-  fotosSalvas.forEach((src) => adicionarFotoNaGaleria(src, false));
+  fotosSalvas.forEach(function (src) {
+    adicionarFotoNaGaleria(src, false);
+  });
 }
 
-// Eventos dos botões
 if (btnLigarCamera) {
-  btnLigarCamera.addEventListener("click", () => {
+  btnLigarCamera.addEventListener("click", function () {
     if (streamAtual) {
       desligarCamera();
     } else {
@@ -387,28 +359,23 @@ if (btnTrocarCamera) {
   btnTrocarCamera.addEventListener("click", trocarCamera);
 }
 
-// Fallback: upload/câmera nativa pelo input file
 if (inputFoto) {
-  inputFoto.addEventListener("change", (evento) => {
+  inputFoto.addEventListener("change", function (evento) {
     const arquivo = evento.target.files[0];
-    if (!arquivo) return;
+    if (!arquivo) {
+      return;
+    }
 
     const leitor = new FileReader();
-    leitor.onload = (e) => {
+    leitor.onload = function (e) {
       adicionarFotoNaGaleria(e.target.result);
-      if (typeof mostrarAviso === "function") {
-        mostrarAviso("Foto carregada na galeria!");
-      }
+      mostrarAviso("Foto carregada na galeria!");
     };
     leitor.readAsDataURL(arquivo);
   });
 }
 
+// ---------- Início ----------
+mostrarCardapio("Todos");
+mostrarPedido();
 carregarGaleria();
-
-
-
-
-
-
-
